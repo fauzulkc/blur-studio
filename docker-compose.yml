@@ -1,0 +1,82 @@
+# Image Blur Studio — two independent services built from the same
+# multi-target Dockerfile (see its header comment for the full picture).
+#
+# Web app (API + built React UI, one HTTP port):
+#   docker compose up -d web
+#   open http://localhost:3333
+#
+# MCP server (stdio, for an MCP client to spawn):
+#   docker compose build mcp
+#   docker compose run --rm -i mcp
+#
+# `run --rm -i` is the normal way to use the mcp service: it starts a fresh
+# container, attaches your terminal's stdin/stdout directly to
+# mcp-server.js's StdioServerTransport, and removes the container when the
+# session ends — which is also how you'd typically configure an MCP client's
+# "command" to spawn it (e.g. `docker compose run --rm -i mcp` as the
+# command, with no args). `docker compose up -d mcp` also works if you'd
+# rather keep one container alive in the background and attach on demand.
+#
+# Both services mount the SAME named volume for blur_studio_config.json
+# persistence but are otherwise fully independent — you can run one, the
+# other, or both.
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
+    container_name: image-blur-studio-web
+    restart: unless-stopped
+    ports:
+      - '3333:3333'
+    environment:
+      - PORT=3333
+
+    volumes:
+      # Persists blur_studio_config.json across container restarts/redeploys
+      # — see the Dockerfile's "web" stage comment for why this mounts onto
+      # a directory (config-volume/) rather than the file directly.
+      - blur_studio_config_web:/app/config-volume
+
+      # --- Uncomment and edit this line to point at your OWN photo folder ---
+      # Nothing outside the image is visible to the container unless it is
+      # bind-mounted like this. Left commented out by default so the
+      # container only ever serves the bundled sample-photos/ folder until
+      # you deliberately opt in.
+      #
+      # REMINDER: destinationMode 'replace' overwrites files inside this
+      # folder IN PLACE (backed up to '<file>.bak' first, unless makeBackup
+      # is explicitly false). Add `:ro` (read-only) if you only want this
+      # container to ever write to a separate destination folder, never
+      # touch your originals.
+      #
+      # - ~/Photos:/photos
+
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: mcp
+    container_name: image-blur-studio-mcp
+    stdin_open: true # keep STDIN open (-i) — required for a stdio MCP server
+    tty: true # allocate a TTY (-t) so the container stays up/attachable
+
+    volumes:
+      - blur_studio_config_mcp:/app/config-volume
+
+      # --- Uncomment and edit this line to point at your OWN photo folder ---
+      # - ~/Photos:/photos
+
+      # Uncomment too if you want backups/output to land in your own folder
+      # rather than a container-only path (e.g. when using destinationMode
+      # 'separate_folder' with an explicit destinationFolder under here):
+      # - ~/Photos/blurred_output:/photos_out
+
+volumes:
+  # Separate named volumes per service — each image bakes its own default
+  # blur_studio_config.json at build time (see the Dockerfile), and the two
+  # services are meant to be usable independently, so their persisted state
+  # shouldn't silently collide if you only ever run one of them.
+  blur_studio_config_web:
+  blur_studio_config_mcp:

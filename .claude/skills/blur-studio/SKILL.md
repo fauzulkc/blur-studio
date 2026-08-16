@@ -4,7 +4,7 @@ description: This skill should be used when the user or an agent asks to "blur t
 metadata:
   requires:
     bins: ["node", "python3"]
-    install: "npm install (from the image-blur-studio repo root); the Python side needs Pillow and numpy — there is no requirements.txt in this repo, note that explicitly"
+    install: "npm install (from the image-blur-studio repo root); pip install -r requirements.txt for the Python side (Pillow, numpy)"
 ---
 
 # Blur Studio
@@ -24,6 +24,8 @@ Three coordinate shapes exist:
 - **Exclusion box** — also `{x1, y1, x2, y2}`, same corner convention as a rectangle target, but with the opposite effect: any pixel inside an exclusion box is forced 100% sharp even if it also falls inside a blur target. Use exclusions to carve a VIP or subject out of a blur region they happen to be standing in or near — see `references/examples.md` for a full group-photo example.
 
 All three shapes accept an optional `label` string (e.g. `"Face - man in red shirt"`) purely for human/agent readability in saved configs; it has no effect on the blur itself.
+
+An **ellipse target** can also override the call's global `blurRadius`/`featherRadius` for itself: set `useGlobalBlur: false` and supply its own `blurRadius`/`featherRadius` (e.g. `{"cx":0.4,"cy":0.3,"rx":0.04,"ry":0.06,"useGlobalBlur":false,"blurRadius":30,"featherRadius":4}`) to blur one region much more heavily than the rest of the photo. Omit `useGlobalBlur` (or leave it `true`) to use the global default, which is the right choice for almost every target. Rectangle targets have no per-target override.
 
 **Worked example.** Given a face that, by eye, sits roughly centered at 40% of the way across the image and 30% of the way down, and spans about 8% of the image's width:
 
@@ -82,7 +84,7 @@ Every subcommand prints `JSON.stringify(result, null, 2)` to stdout and exits 0 
 
 Run `npm install` from the `image-blur-studio` repo root before using either path — this pulls in `commander`, `@modelcontextprotocol/sdk`, `zod`, and the other Node dependencies both `cli.js` and `mcp-server.js` need.
 
-The pixel-processing step is Python, not Node: `blurService.js` shells out to `blur_processor.py`, which imports `PIL` (Pillow) and `numpy`. **There is no `requirements.txt` in this repo** — note that explicitly, since it's easy to assume one exists and run a `pip install -r requirements.txt` that fails. Confirm `python3 -c "import PIL, numpy"` succeeds in whatever Python environment `python3` resolves to before calling `apply_blur`/`apply`; if it fails, install Pillow and numpy into that environment directly (e.g. `pip install Pillow numpy`) rather than looking for a manifest file that isn't there.
+The pixel-processing step is Python, not Node: `blurService.js` shells out to `blur_processor.py`, which imports `PIL` (Pillow) and `numpy`. Run `pip install -r requirements.txt` from the repo root to install both. Confirm `python3 -c "import PIL, numpy"` succeeds in whatever Python environment `python3` resolves to before calling `apply_blur`/`apply` — if it fails despite the install, `python3` is probably resolving to a different interpreter than the one `pip` installed into.
 
 ## Common Pitfalls
 

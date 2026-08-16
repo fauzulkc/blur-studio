@@ -132,6 +132,7 @@ export default function BatchModal({
           <button
             onClick={onClose}
             disabled={isProcessing}
+            title="Close"
             aria-label="Close"
             className="p-1.5 text-text-secondary hover:text-text-primary rounded-control hover:bg-surface-raised transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
           >
@@ -203,6 +204,7 @@ export default function BatchModal({
           <button
             onClick={onClose}
             disabled={isProcessing}
+            title={batchDone ? 'Close this dialog' : 'Cancel and close this dialog'}
             className="px-3 py-1.5 hover:bg-surface-raised text-text-secondary hover:text-text-primary rounded-control text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
           >
             {batchDone ? 'Close' : 'Cancel'}
@@ -213,6 +215,7 @@ export default function BatchModal({
               <button
                 onClick={handleDownloadAll}
                 disabled={isZipping}
+                title="Download every successfully-processed photo as one ZIP file"
                 className="flex items-center gap-2 px-4 py-2 glass-btn rounded-panel text-xs font-medium transition-all disabled:opacity-50 cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
               >
                 {isZipping ? (
@@ -227,6 +230,7 @@ export default function BatchModal({
             <button
               onClick={handleStartBatch}
               disabled={isProcessing}
+              title={batchDone ? 'Run batch processing again with the current settings' : 'Process every photo in the folder with its saved regions'}
               className="flex items-center gap-2 px-5 py-2 bg-accent hover:bg-accent-strong text-surface-canvas font-bold rounded-panel text-xs transition-all shadow-lg shadow-accent/30 disabled:opacity-50 cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
             >
               {isProcessing ? (

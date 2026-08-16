@@ -1,0 +1,96 @@
+name: Bug Report
+description: Report something broken in Image Blur Studio
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report.
+
+        **Privacy reminder:** Image Blur Studio is a privacy tool. Before
+        submitting, please double-check that any screenshots, logs, or file
+        paths you attach do **not** contain real/private photos, real
+        filenames, or real folder paths from your machine. Use the bundled
+        `sample-photos/` folder to reproduce and illustrate the issue
+        whenever possible.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: Tell us what went wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Step-by-step instructions to reproduce the issue.
+      placeholder: |
+        1. Run '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface were you using?
+      description: Web UI, CLI, or MCP server?
+      options:
+        - Web UI
+        - CLI
+        - MCP server
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: e.g. macOS 14.5, Ubuntu 22.04, Windows 11
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      description: Output of `node -v` (this project requires Node.js >=20)
+      placeholder: e.g. v20.11.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or console output
+      description: |
+        Paste any relevant terminal output, browser console errors, or
+        server logs. Please scrub any real/private file paths or filenames
+        first.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: privacy-confirmation
+    attributes:
+      label: Privacy confirmation
+      description: Please confirm before submitting.
+      options:
+        - label: I have checked my screenshots, logs, and text above and confirm they do not contain real/private photo data or real local file paths.
+          required: true

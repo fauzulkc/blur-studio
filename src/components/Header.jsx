@@ -121,6 +121,7 @@ export default function Header({
                   <button
                     key={p.id}
                     onClick={() => handlePresetSelect(p.path)}
+                    title={`Load ${p.path}`}
                     className="w-full text-left px-2.5 py-1.5 rounded-control text-xs hover:bg-accent/10 hover:text-accent-strong text-text-secondary flex items-center justify-between group transition-colors"
                   >
                     <span className="font-medium">{p.name}</span>
@@ -141,6 +142,7 @@ export default function Header({
           <button
             type="button"
             onClick={() => setDestinationMode('separate_folder')}
+            title="Write blurred photos to a separate output folder — originals are never touched"
             className={`ios-segment-btn text-xs font-medium transition-all ${
               destinationMode === 'separate_folder'
                 ? 'on'
@@ -222,6 +224,7 @@ export default function Header({
           type="button"
           onClick={onApplyActive}
           disabled={!activeImage || isProcessing}
+          title="Blur the currently open photo using its saved regions"
           className="flex items-center gap-1.5 px-3.5 py-1.5 glass-btn pri rounded-control text-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
         >
           {isProcessing ? (
@@ -249,6 +252,7 @@ export default function Header({
           type="button"
           onClick={onOpenBatchModal}
           disabled={totalImagesCount === 0}
+          title="Open batch processing to blur every photo in the folder at once"
           className="flex items-center gap-1.5 px-3.5 py-1.5 glass-btn rounded-control text-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
         >
           <Play className="w-3.5 h-3.5 fill-current" />

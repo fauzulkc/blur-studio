@@ -26,9 +26,9 @@ Active**, **Start Batch Processing**, and both **Download** buttons.
 
 ## Why Apply/Batch are safe to actually click here
 
-The app's default folder is the bundled `sample-photos/` — three small
-synthetic (generated, not real) images checked into the repo, not anyone's
-real photos. The destination-mode test deliberately ends on **Export
+The app's default folder is the bundled `sample-photos/` — two CC0
+(public-domain) photos checked into the repo (see `sample-photos/CREDITS.md`),
+not anyone's real/private photos. The destination-mode test deliberately ends on **Export
 Folder** before any real apply/batch test runs, so output only ever lands in
 the gitignored `sample-photos-blurred/` folder; the tracked `sample-photos/`
 source images are never mutated in place. If you add a source folder of your

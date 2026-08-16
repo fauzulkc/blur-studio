@@ -1,0 +1,9 @@
+# Normalize line endings for text files
+* text=auto eol=lf
+
+# Never diff/merge binary assets as text
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.webp binary
+*.gif binary

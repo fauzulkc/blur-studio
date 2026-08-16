@@ -50,12 +50,18 @@ function handle(fn) {
 // ---------------------------------------------------------------------------
 
 // Ellipse blur target: normalized 0-1 CENTER point + radius (not corners).
+// blurRadius/featherRadius only take effect when useGlobalBlur is explicitly
+// false — otherwise this region uses the call's top-level blurRadius/featherRadius,
+// same as if these fields were omitted entirely.
 const ellipseTargetShape = z.object({
   cx: z.number().min(0).max(1).describe('Normalized (0-1) X coordinate of the ellipse CENTER'),
   cy: z.number().min(0).max(1).describe('Normalized (0-1) Y coordinate of the ellipse CENTER'),
   rx: z.number().min(0).max(1).describe('Normalized (0-1) horizontal radius'),
   ry: z.number().min(0).max(1).describe('Normalized (0-1) vertical radius'),
-  label: z.string().optional().describe('Optional human-readable label, e.g. "Face - man in red shirt"')
+  label: z.string().optional().describe('Optional human-readable label, e.g. "Face - man in red shirt"'),
+  useGlobalBlur: z.boolean().optional().describe('Defaults to true (use the global blurRadius/featherRadius). Set to false to make this one region use its own blurRadius/featherRadius instead.'),
+  blurRadius: z.number().min(0).optional().describe('This region\'s own Gaussian blur radius in pixels — only applied when useGlobalBlur is false'),
+  featherRadius: z.number().min(0).optional().describe('This region\'s own soft-edge feather radius in pixels — only applied when useGlobalBlur is false')
 });
 
 // Rectangular/grid blur target OR exclusion box: normalized 0-1 corners.
@@ -179,6 +185,10 @@ server.registerTool(
       'Each item.exclusions entry is a rectangle {x1, y1, x2, y2} (same normalized 0-1 corner convention). Any pixel ' +
       'inside an exclusion box is kept 100% sharp even if it also falls inside a blur target — use this to carve out ' +
       'a VIP/subject who must stay unblurred even though they are standing inside (or next to) a region you are blurring. ' +
+      '\n\n' +
+      'By default every target uses the call\'s top-level blurRadius/featherRadius. An ELLIPSE target can override ' +
+      'this for itself by setting useGlobalBlur: false and supplying its own blurRadius/featherRadius — e.g. to blur ' +
+      'one face much more heavily than the rest of the photo. Rectangle/grid targets have no per-target override. ' +
       '\n\n' +
       "destinationMode controls where output goes: 'replace' overwrites the original file at inputPath in place " +
       '(the original is backed up first, to "<inputPath>.bak", unless makeBackup is explicitly set to false); ' +

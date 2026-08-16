@@ -2,9 +2,10 @@
 // driven against the real running app (not a mock). Requires `node server.js`
 // and `npx vite` already running — see tests/e2e/README.md.
 //
-// The app's default folder is the bundled `sample-photos/` — three small
-// synthetic (generated, not real) images checked into the repo — so, unlike
-// earlier versions of this suite, it's now safe to actually click through
+// The app's default folder is the bundled `sample-photos/` — two CC0
+// (public-domain) photos checked into the repo, not anyone's real/private
+// data (see sample-photos/CREDITS.md) — so, unlike earlier versions of this
+// suite, it's now safe to actually click through
 // "Apply Active" and "Start Batch Processing" for real: the destination-mode
 // tests below deliberately leave `destinationMode` on "Export Folder" before
 // any real apply/batch runs, so output only ever lands in the gitignored
@@ -184,15 +185,61 @@ test('editing a numeric field moves the region', async ({ page }) => {
   await page.waitForTimeout(200);
   const val = await cxField.inputValue();
   if (Math.round(parseFloat(val)) !== 50) throw new Error(`cx field did not accept the new value, reads "${val}"`);
+});
+
+test('per-segment blur: ticked by default, unticking reveals its own Blur/Feather fields', async ({ page }) => {
+  // Still operating on the same region from "drag on canvas creates an ellipse
+  // region" above (chain continues from the previous test).
+  const globalCheckbox = page.locator('.glass-capsule input[type="checkbox"]');
+  if (!(await globalCheckbox.isChecked())) throw new Error('a freshly-created region should default to using the global blur settings');
+
+  // Only cx/cy/rx are visible while ticked — no per-segment Blur/Feather fields yet.
+  const numFieldsBefore = await page.locator('.glass-capsule input[type="number"]').count();
+  if (numFieldsBefore !== 3) throw new Error(`expected 3 number fields while using global settings, found ${numFieldsBefore}`);
+
+  // Plain .click() rather than .uncheck() — unticking reveals two new number
+  // fields, a capsule-width change that can race Playwright's own stricter
+  // state-verification in .check()/.uncheck() (the same capsule-reflow timing
+  // issue documented on "Delete Region button" below). A plain click plus an
+  // explicit assertion afterward sidesteps that race.
+  await globalCheckbox.click();
+  await page.waitForTimeout(300);
+  if (await globalCheckbox.isChecked()) throw new Error('unticking Global did not register');
+  const numFieldsAfter = await page.locator('.glass-capsule input[type="number"]').count();
+  if (numFieldsAfter !== 5) throw new Error(`expected 5 number fields (cx/cy/rx + per-segment blur/feather) after unticking, found ${numFieldsAfter}`);
+
+  // The 4th field is this region's own Blur override — edit it and confirm it sticks.
+  const blurField = page.locator('.glass-capsule input[type="number"]').nth(3);
+  await blurField.fill('30');
+  await page.keyboard.press('Tab');
+  await page.waitForTimeout(150);
+  const blurVal = await blurField.inputValue();
+  if (Math.round(parseFloat(blurVal)) !== 30) throw new Error(`per-segment blur field did not accept the new value, reads "${blurVal}"`);
+
+  // Re-ticking hides the per-segment fields again — the same capsule-reflow
+  // click race as "Delete Region button" below (unticking→ticking swings the
+  // capsule's width by two whole fields), so retry once before failing for real.
+  await page.locator('body').click({ position: { x: 5, y: 5 } }).catch(() => {});
+  await page.waitForTimeout(150);
+  const checkbox = page.locator('.glass-capsule input[type="checkbox"]');
+  await checkbox.click();
+  await page.waitForTimeout(300);
+  if (!(await checkbox.isChecked())) {
+    await checkbox.click();
+    await page.waitForTimeout(300);
+  }
+  if (!(await checkbox.isChecked())) throw new Error('re-ticking Global did not register');
+  const numFieldsRetick = await page.locator('.glass-capsule input[type="number"]').count();
+  if (numFieldsRetick !== 3) throw new Error(`expected 3 number fields again after re-ticking Global, found ${numFieldsRetick}`);
 
   // End-of-chain cleanup: this region (created by "drag on canvas creates an
-  // ellipse region" above) is still selected — remove it now that Apply Active
-  // later in the suite actually persists config for real (sample-photos data),
-  // so it doesn't leak into sample-1.jpg's saved targets on every re-run.
-  // Tab left focus inside the next number input — the app's global keyboard
-  // handler deliberately ignores Delete/Backspace while an input is focused
-  // (so typing "8" in a field doesn't delete the region), so a bare Delete
-  // press here would silently no-op. Click a neutral area first to blur it.
+  // ellipse region" two tests back) is still selected — remove it now that
+  // Apply Active later in the suite actually persists config for real
+  // (sample-photos data), so it doesn't leak into sample-1.jpg's saved targets
+  // on every re-run. Tab left focus inside a number input — the app's global
+  // keyboard handler deliberately ignores Delete/Backspace while an input is
+  // focused (so typing "8" in a field doesn't delete the region), so a bare
+  // Delete press here would silently no-op. Click a neutral area first to blur it.
   await page.locator('body').click({ position: { x: 5, y: 5 } }).catch(() => {});
   const beforeCleanup = await regionCount(page);
   await page.keyboard.press('Delete');
@@ -212,13 +259,20 @@ test('Delete Region button removes the selected region', async ({ page }) => {
   const afterCreate = await regionCount(page);
   if (afterCreate !== before + 1) throw new Error('setup: region was not created before testing the Delete Region button');
 
-  // KNOWN FLAKE, not an app bug — investigated at length (5 full-suite runs +
+  // KNOWN FLAKE, not an app bug — investigated at length (5+ full-suite runs +
   // 3 isolated repros): the failure mode is inconsistent between runs (button
   // vanishes without filtering; or click times out entirely), which is the
   // signature of a click racing the capsule's own backdrop-filter reflow in
-  // headless Chromium at the moment its content width changes (selecting a
-  // fresh region resizes the capsule), not a deterministic logic error. The
-  // identical delete logic (setTargets filter + setSelectedTargetIndex(null))
+  // headless Chromium at the moment its content width changes, not a
+  // deterministic logic error. One concrete source of that reflow (the
+  // hover-coordinate readout resizing on every mouse move / grid hover) was
+  // found and fixed — CanvasStudio.jsx now reserves fixed space for it instead
+  // of mounting/unmounting. This flake persisted after that fix, so a second
+  // source remains: selecting a freshly-created region switches the
+  // CONTEXTUAL SECTION from its "no selection" hint+button layout to the
+  // label+3-fields+add+delete editor layout, a much larger width jump than the
+  // hover readout ever was, landing right when this test's delete click fires.
+  // The identical delete logic (setTargets filter + setSelectedTargetIndex(null))
   // is exercised by "Delete/Backspace keyboard shortcut" below and passes
   // every run. Retry once before failing for real.
   const deleteBtn = page.locator('button[title="Delete Region"]');
@@ -237,7 +291,7 @@ test('Delete/Backspace keyboard shortcut removes a selected region', async ({ pa
   await page.locator('button[title="Ellipse Tool"]').click();
   await page.waitForTimeout(150);
   const before = await regionCount(page);
-  await dragOnCanvas(page, 0.6, 0.3, 30, 30); // auto-selects the new region
+  await dragOnCanvas(page, 0.65, 0.4, 30, 30); // auto-selects the new region
   await page.waitForTimeout(300);
   const afterCreate = await regionCount(page);
   if (afterCreate !== before + 1) throw new Error('setup: region was not created before testing the Delete key');
@@ -388,7 +442,10 @@ test('grid density slider changes the density readout', async ({ page }) => {
 test('drag-painting grid tiles increases the painted-tile count', async ({ page }) => {
   const beforeText = await page.getByText(/tiles painted/).textContent();
   const beforeN = parseInt(beforeText, 10);
-  await dragOnCanvas(page, 0.2, 0.2, 60, 40);
+  // Bottom-right area — clear of sample-1.jpg's pre-configured Person 1/2 targets
+  // and the "Woman in red" exclusion box (all sit in the top-left/center band),
+  // so this drag actually paints a grid tile instead of grabbing an existing region.
+  await dragOnCanvas(page, 0.7, 0.55, 60, 40);
   await page.waitForTimeout(300);
   const afterText = await page.getByText(/tiles painted/).textContent();
   const afterN = parseInt(afterText, 10);
@@ -574,11 +631,11 @@ test('reset checkpoint: sample-1.jpg config back to its pristine baseline', asyn
       body: JSON.stringify({
         filename: 'sample-1.jpg',
         targets: [
-          { cx: 0.25, cy: 0.425, rx: 0.06, ry: 0.09, label: 'Person 1' },
-          { cx: 0.5, cy: 0.45, rx: 0.065, ry: 0.1, label: 'Person 2' }
+          { cx: 0.15, cy: 0.2, rx: 0.055, ry: 0.075, label: 'Person 1' },
+          { cx: 0.32, cy: 0.22, rx: 0.055, ry: 0.075, label: 'Person 2' }
         ],
         exclusions: [
-          { x1: 0.033, y1: 0.05, x2: 0.967, y2: 0.175, label: 'Banner (protected)' }
+          { x1: 0.43, y1: 0.16, x2: 0.56, y2: 0.33, label: 'Woman in red (protected)' }
         ]
       })
     });

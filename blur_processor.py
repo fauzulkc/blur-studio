@@ -10,8 +10,41 @@ import sys
 import json
 import argparse
 import glob
+from collections import defaultdict
 from PIL import Image, ImageFilter, ImageDraw, ImageOps
 import numpy as np
+
+
+def _draw_target(draw, t, w, h):
+    """Draws one target (ellipse dict, rect dict, or legacy [cx,cy,rx,ry] list) onto a mask."""
+    if isinstance(t, dict):
+        if 'x1' in t and 'x2' in t:
+            x1 = int(float(t['x1']) * w)
+            y1 = int(float(t['y1']) * h)
+            x2 = int(float(t['x2']) * w)
+            y2 = int(float(t['y2']) * h)
+            draw.rectangle([min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)], fill=255)
+        else:
+            cx_r = float(t.get('cx', 0))
+            cy_r = float(t.get('cy', 0))
+            rx_r = float(t.get('rx', 0.03))
+            ry_r = float(t.get('ry', 0.04))
+            cx, cy = int(cx_r * w), int(cy_r * h)
+            rx, ry = max(2, int(rx_r * w)), max(2, int(ry_r * h))
+            draw.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=255)
+    elif isinstance(t, (list, tuple)) and len(t) == 4:
+        cx, cy = int(float(t[0]) * w), int(float(t[1]) * h)
+        rx, ry = max(2, int(float(t[2]) * w)), max(2, int(float(t[3]) * h))
+        draw.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=255)
+
+
+def _target_blur_settings(t, default_blur, default_feather):
+    """A target overrides the global blur/feather radius only when it explicitly opts out of
+    the global default (useGlobalBlur: false) and supplies its own values. Legacy [cx,cy,rx,ry]
+    list-form targets have no room for per-target settings and always use the global default."""
+    if isinstance(t, dict) and t.get('useGlobalBlur') is False:
+        return float(t.get('blurRadius', default_blur)), float(t.get('featherRadius', default_feather))
+    return default_blur, default_feather
 
 def process_single_image(input_path, output_path, targets=None, exclusion_boxes=None,
                          blur_radius=13.0, feather_radius=14.0, make_backup=False):
@@ -55,40 +88,12 @@ def process_single_image(input_path, output_path, targets=None, exclusion_boxes=
             "output": output_path
         }
     
-    # 1. Create 8-bit grayscale mask for blur targets
-    mask = Image.new('L', (w, h), 0)
-    draw = ImageDraw.Draw(mask)
-    
-    for t in targets:
-        if isinstance(t, dict):
-            # Check if rectangular / grid cell target
-            if 'x1' in t and 'x2' in t:
-                x1 = int(float(t['x1']) * w)
-                y1 = int(float(t['y1']) * h)
-                x2 = int(float(t['x2']) * w)
-                y2 = int(float(t['y2']) * h)
-                draw.rectangle([min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)], fill=255)
-            else:
-                cx_r = float(t.get('cx', 0))
-                cy_r = float(t.get('cy', 0))
-                rx_r = float(t.get('rx', 0.03))
-                ry_r = float(t.get('ry', 0.04))
-                
-                cx, cy = int(cx_r * w), int(cy_r * h)
-                rx, ry = max(2, int(rx_r * w)), max(2, int(ry_r * h))
-                draw.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=255)
-        elif isinstance(t, (list, tuple)):
-            if len(t) == 4:
-                # [cx, cy, rx, ry]
-                cx, cy = int(float(t[0]) * w), int(float(t[1]) * h)
-                rx, ry = max(2, int(float(t[2]) * w)), max(2, int(float(t[3]) * h))
-                draw.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=255)
-                
-    # 2. Punch out VIP exclusion boxes (100% sharp subject protection)
+    # 1. Punch-out mask for VIP exclusion boxes (100% sharp subject protection),
+    # built once and subtracted from every blur group below.
+    pmask = None
     if exclusion_boxes:
         pmask = Image.new('L', (w, h), 0)
         pdraw = ImageDraw.Draw(pmask)
-        
         for box in exclusion_boxes:
             if isinstance(box, dict):
                 x1_r = float(box.get('x1', 0))
@@ -97,28 +102,37 @@ def process_single_image(input_path, output_path, targets=None, exclusion_boxes=
                 y2_r = float(box.get('y2', 0))
             else:
                 x1_r, y1_r, x2_r, y2_r = float(box[0]), float(box[1]), float(box[2]), float(box[3])
-                
             x1, y1 = int(x1_r * w), int(y1_r * h)
             x2, y2 = int(x2_r * w), int(y2_r * h)
             pdraw.rectangle([min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)], fill=255)
-            
-        mask_np = np.array(mask)
-        p_np = np.array(pmask)
-        mask_np[p_np == 255] = 0
-        mask = Image.fromarray(mask_np)
-        
-    # 3. Apply Gaussian blur to the full original image
-    blurred_img = orig_img.filter(ImageFilter.GaussianBlur(radius=float(blur_radius)))
-    
-    # 4. Feather the mask edges smoothly
-    if float(feather_radius) > 0:
-        mask_feathered = mask.filter(ImageFilter.GaussianBlur(radius=float(feather_radius)))
-    else:
-        mask_feathered = mask
-        
-    # 5. Composite sharp image with blurred version based on mask
-    final_img = Image.composite(blurred_img, orig_img, mask_feathered)
-    
+        pmask_np = np.array(pmask)
+
+    # 2. Group targets by their EFFECTIVE (blurRadius, featherRadius) — the global default,
+    # unless a target opts out via useGlobalBlur: false and supplies its own values. Each
+    # group becomes its own blur pass, composited in turn, so individual regions can be
+    # blurred stronger/softer than the rest of the photo without affecting one another.
+    groups = defaultdict(list)
+    for t in targets:
+        groups[_target_blur_settings(t, float(blur_radius), float(feather_radius))].append(t)
+
+    final_img = orig_img.copy()
+    for (g_blur, g_feather), group_targets in groups.items():
+        mask = Image.new('L', (w, h), 0)
+        draw = ImageDraw.Draw(mask)
+        for t in group_targets:
+            _draw_target(draw, t, w, h)
+
+        if pmask is not None:
+            mask_np = np.array(mask)
+            mask_np[pmask_np == 255] = 0
+            mask = Image.fromarray(mask_np)
+
+        if g_feather > 0:
+            mask = mask.filter(ImageFilter.GaussianBlur(radius=g_feather))
+
+        blurred_img = orig_img.filter(ImageFilter.GaussianBlur(radius=g_blur))
+        final_img = Image.composite(blurred_img, final_img, mask)
+
     # Determine output format and quality
     ext = os.path.splitext(output_path)[1].lower()
     if ext in ['.jpg', '.jpeg']:

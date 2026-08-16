@@ -54,35 +54,35 @@ Scenario: an entire folder of five event photos needs faces blurred, and the MCP
 ```json
 [
   {
-    "inputPath": "/home/fauzul/photos/event/IMG_001.jpg",
-    "outputPath": "/home/fauzul/photos/event_blurred/IMG_001.jpg",
+    "inputPath": "/path/to/photos/event/IMG_001.jpg",
+    "outputPath": "/path/to/photos/event_blurred/IMG_001.jpg",
     "targets": [
       { "cx": 0.22, "cy": 0.41, "rx": 0.03, "ry": 0.045, "label": "Face - left" },
       { "cx": 0.61, "cy": 0.39, "rx": 0.035, "ry": 0.05, "label": "Face - center" }
     ]
   },
   {
-    "inputPath": "/home/fauzul/photos/event/IMG_002.jpg",
-    "outputPath": "/home/fauzul/photos/event_blurred/IMG_002.jpg",
+    "inputPath": "/path/to/photos/event/IMG_002.jpg",
+    "outputPath": "/path/to/photos/event_blurred/IMG_002.jpg",
     "targets": [
       { "cx": 0.48, "cy": 0.33, "rx": 0.04, "ry": 0.06, "label": "Face - center" }
     ]
   },
   {
-    "inputPath": "/home/fauzul/photos/event/IMG_003.jpg",
-    "outputPath": "/home/fauzul/photos/event_blurred/IMG_003.jpg",
+    "inputPath": "/path/to/photos/event/IMG_003.jpg",
+    "outputPath": "/path/to/photos/event_blurred/IMG_003.jpg",
     "targets": [
       { "x1": 0.70, "y1": 0.55, "x2": 0.92, "y2": 0.63, "label": "License plate - parked car" }
     ]
   },
   {
-    "inputPath": "/home/fauzul/photos/event/IMG_004.jpg",
-    "outputPath": "/home/fauzul/photos/event_blurred/IMG_004.jpg",
+    "inputPath": "/path/to/photos/event/IMG_004.jpg",
+    "outputPath": "/path/to/photos/event_blurred/IMG_004.jpg",
     "targets": []
   },
   {
-    "inputPath": "/home/fauzul/photos/event/IMG_005.jpg",
-    "outputPath": "/home/fauzul/photos/event_blurred/IMG_005.jpg",
+    "inputPath": "/path/to/photos/event/IMG_005.jpg",
+    "outputPath": "/path/to/photos/event_blurred/IMG_005.jpg",
     "targets": [
       { "cx": 0.15, "cy": 0.60, "rx": 0.05, "ry": 0.07, "label": "Face - foreground" },
       { "cx": 0.80, "cy": 0.44, "rx": 0.04, "ry": 0.06, "label": "Face - background" }

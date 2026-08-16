@@ -8,17 +8,18 @@ const __dirname = path.dirname(__filename);
 
 const SAMPLE_PHOTOS_DIR = path.join(__dirname, 'sample-photos');
 
-// Demo targets/exclusions for the bundled sample photos (see sample-photos/),
-// so the app has something to show on first run without touching real data.
+// Demo targets/exclusions for the bundled sample photos (see sample-photos/,
+// CC0 — see sample-photos/CREDITS.md), so the app has something to show on
+// first run without touching real data.
 const INITIAL_PRESET_TARGETS = {
   'sample-1.jpg': [
-    { cx: 0.25, cy: 0.425, rx: 0.06, ry: 0.09, label: 'Person 1' },
-    { cx: 0.5, cy: 0.45, rx: 0.065, ry: 0.1, label: 'Person 2' }
+    { cx: 0.15, cy: 0.2, rx: 0.055, ry: 0.075, label: 'Person 1' },
+    { cx: 0.32, cy: 0.22, rx: 0.055, ry: 0.075, label: 'Person 2' }
   ]
 };
 
 const INITIAL_EXCLUSIONS = {
-  'sample-1.jpg': [{ x1: 0.033, y1: 0.05, x2: 0.967, y2: 0.175, label: 'Banner (protected)' }]
+  'sample-1.jpg': [{ x1: 0.43, y1: 0.16, x2: 0.56, y2: 0.33, label: 'Woman in red (protected)' }]
 };
 
 const CONFIG_PATH = path.join(__dirname, 'blur_studio_config.json');

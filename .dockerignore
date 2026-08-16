@@ -1,0 +1,37 @@
+# --- VCS / editor / OS noise ---
+.git
+.gitignore
+.gitattributes
+.DS_Store
+Thumbs.db
+*.log
+
+# --- Node ---
+node_modules
+npm-debug.log*
+
+# --- Frontend build output (not needed by the MCP stdio server) ---
+dist
+
+# --- Python bytecode cache ---
+__pycache__/
+*.pyc
+
+# --- Runtime state / generated output (never bake into the image) ---
+blur_studio_config.json
+sample-photos-blurred/
+*.bak
+
+# --- Tests / docs / dev tooling not needed at runtime ---
+tests/
+docs/
+tests/e2e/screenshots/
+.claude/
+.vscode/
+*.md
+!README.md
+
+# --- Docker's own files (no need to send these into their own build context) ---
+Dockerfile
+.dockerignore
+docker-compose.yml

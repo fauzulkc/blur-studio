@@ -1,0 +1,206 @@
+# syntax=docker/dockerfile:1
+#
+# Image Blur Studio — multi-target Dockerfile
+#
+# Two independently buildable images share this one file:
+#
+#   docker build --target mcp -t image-blur-studio-mcp .
+#     → runs ONLY mcp-server.js (StdioServerTransport). Not a web server — an
+#       MCP client (Claude Desktop, Claude Code, etc.) spawns this process and
+#       talks to it over stdin/stdout. No port, no React UI.
+#
+#   docker build --target web -t image-blur-studio-web .
+#     → runs server.js: the Express API AND the built React UI on ONE HTTP
+#       port (server.js already serves dist/ as static files when it exists —
+#       see the comment near its bottom). This is the image to deploy for
+#       hosting the actual app.
+#
+# `docker build .` with no --target builds the LAST stage (web), since that's
+# the one most people reaching for "dockerize the whole project" actually want.
+#
+# blurService.js shells out to `python3 blur_processor.py` via
+# child_process.spawn, so both runtime images need a real Python 3 + Pillow +
+# numpy install alongside the Node runtime, not just Node. The web image's
+# /api/download-batch route also shells out to the system `zip` binary.
+#
+# Built on node:20-slim (Debian, glibc) rather than an Alpine variant — musl
+# libc has previously caused problems with native Node bindings and with
+# prebuilt Pillow/numpy wheels, so Debian-slim is the safer base here.
+
+# ---------------------------------------------------------------------------
+# Stage: deps — Node PRODUCTION dependencies only (no Vite/Playwright/etc.)
+# ---------------------------------------------------------------------------
+FROM node:20-slim AS deps
+
+WORKDIR /app
+
+# Copy only the manifest files first so this (potentially slow) layer is
+# cached unless dependencies actually change.
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# ---------------------------------------------------------------------------
+# Stage: frontend-build — compile the React UI (needs devDependencies: Vite)
+# ---------------------------------------------------------------------------
+FROM node:20-slim AS frontend-build
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY vite.config.js index.html ./
+COPY src ./src
+RUN npm run build
+
+# ---------------------------------------------------------------------------
+# Stage: runtime-base — shared Python3/Pillow/numpy + Node prod deps + the
+# core blur engine files common to BOTH final images (mcp and web).
+# ---------------------------------------------------------------------------
+FROM node:20-slim AS runtime-base
+
+# python3 + pip + zip via apt (Debian, not Alpine — see header comment).
+# zip is only used by the web image's /api/download-batch route, but it's a
+# few KB and installing it once here (shared by both final stages) is
+# simpler than splitting the apt layer in two.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3 \
+      python3-pip \
+      zip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Own /app itself as the non-root "node" user (uid/gid 1000, baked into the
+# official node:20-slim image) up front — blurService.js writes
+# blur_studio_config.json directly into /app on first run, and
+# blur_processor.py creates destination folders (e.g. sample-photos-blurred/)
+# under /app as needed, so the directory itself must be writable by the user
+# we'll eventually run as. Doing this once, before the (larger) COPYs below,
+# and then using `COPY --chown` for the rest avoids an expensive recursive
+# chown over all of node_modules at the end.
+RUN chown node:node /app
+
+# Python dependencies (Pillow, numpy). Debian 12's system Python enforces PEP
+# 668 ("externally-managed-environment"), which blocks plain `pip install`.
+# --break-system-packages is safe here: this container's Python is
+# single-purpose and disposable, not a shared/managed system interpreter.
+COPY requirements.txt ./
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+
+# Production node_modules built in the deps stage.
+COPY --chown=node:node --from=deps /app/node_modules ./node_modules
+
+# Only what BOTH entry points actually need at runtime. blurService.js
+# resolves CONFIG_PATH, SAMPLE_PHOTOS_DIR, and the blur_processor.py path off
+# its own __dirname, so these all need to sit flat, directly under /app,
+# exactly as they do in the repo root — do not nest them under a subfolder.
+COPY --chown=node:node package.json ./
+COPY --chown=node:node blurService.js blur_processor.py ./
+COPY --chown=node:node sample-photos ./sample-photos
+
+# ---------------------------------------------------------------------------
+# Stage: mcp — stdio MCP server only
+# ---------------------------------------------------------------------------
+FROM runtime-base AS mcp
+
+COPY --chown=node:node mcp-server.js ./
+
+USER node
+
+# Bake a real default blur_studio_config.json into the image — generated by
+# actually calling blurService.js's own getFullConfig() (the exact same code
+# path the app runs on a genuine first launch), as the same non-root user
+# that will run the server — then relocate it under config-volume/ and leave
+# a symlink at the path blurService.js actually reads/writes
+# (CONFIG_PATH = __dirname/blur_studio_config.json).
+#
+# Why the indirection: docker-compose.yml mounts a named volume onto the
+# config-volume/ *directory* so state survives across separate container
+# runs. Docker reliably auto-populates a fresh named volume from whatever
+# already exists at a DIRECTORY mount target in the image (the same
+# mechanism Postgres/MySQL images rely on) — but the equivalent auto-populate
+# behavior for a volume mounted onto a single FILE path is not reliably
+# supported across Docker versions/backends (confirmed against this
+# environment's daemon, which fails to start the container at all in that
+# case). Mounting a directory and symlinking into it sidesteps that entirely
+# while leaving blurService.js untouched.
+RUN mkdir -p config-volume \
+    && node --input-type=module -e "import('./blurService.js').then(m => m.getFullConfig())" \
+    && mv blur_studio_config.json config-volume/blur_studio_config.json \
+    && ln -s config-volume/blur_studio_config.json blur_studio_config.json
+
+# No EXPOSE: this is a stdio MCP server, not a network service. An MCP client
+# spawns/attaches to this process's stdin/stdout directly — there is no port
+# to publish.
+#
+# ---------------------------------------------------------------------------
+# IMPORTANT — volumes (nothing outside the image is visible without these):
+#
+#   * Real photo folders must be bind-mounted in at `docker run` time, e.g.:
+#       docker run -it --rm -v ~/Photos:/photos image-blur-studio-mcp
+#     then pass paths under /photos/... as inputPath/folderPath to the MCP
+#     tools. destinationMode: 'replace' overwrites files IN PLACE inside
+#     whatever folder you mount (backed up to '<file>.bak' first, unless
+#     makeBackup is explicitly set to false) — mount read-only (:ro) or use
+#     destinationMode: 'separate_folder' if you don't want your source
+#     photos modified.
+#
+#   * The container's own filesystem is disposable: blur_studio_config.json
+#     (saved blur targets/exclusions and global defaults) will NOT persist
+#     across separate `docker run` invocations unless a volume is also
+#     mounted onto /app/config-volume (blur_studio_config.json lives there
+#     and is symlinked into place — see the comment above USER node). See
+#     docker-compose.yml for a working example using a named volume for
+#     exactly this.
+# ---------------------------------------------------------------------------
+
+ENTRYPOINT ["node", "mcp-server.js"]
+
+# ---------------------------------------------------------------------------
+# Stage: web — full app: Express API + built React UI on one HTTP port.
+# This is the image to deploy for actually hosting Image Blur Studio.
+# ---------------------------------------------------------------------------
+FROM runtime-base AS web
+
+COPY --chown=node:node server.js cli.js ./
+COPY --chown=node:node --from=frontend-build /app/dist ./dist
+
+USER node
+
+# Same config-volume indirection as the mcp stage — see the detailed comment
+# there. Kept identical so both images behave the same way for persistence.
+RUN mkdir -p config-volume \
+    && node --input-type=module -e "import('./blurService.js').then(m => m.getFullConfig())" \
+    && mv blur_studio_config.json config-volume/blur_studio_config.json \
+    && ln -s config-volume/blur_studio_config.json blur_studio_config.json
+
+ENV PORT=3333
+EXPOSE 3333
+
+# Node 20 has a native, dependency-free fetch() — no curl/wget needed in the
+# image just for this. Fails (exit 1) if the server isn't answering, or after
+# the 5s timeout.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://localhost:'+(process.env.PORT||3333)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+# ---------------------------------------------------------------------------
+# IMPORTANT — same volume caveats as the mcp stage apply here too:
+#
+#   * Mount real photo folders in at `docker run` time, e.g.:
+#       docker run -d -p 3333:3333 -v ~/Photos:/photos image-blur-studio-web
+#     then point the Web UI's source-folder field at /photos/... — nothing
+#     outside the image is visible otherwise. destinationMode: 'replace'
+#     overwrites files IN PLACE inside whatever folder you mount (backed up
+#     to '<file>.bak' first unless makeBackup is explicitly false) — mount
+#     read-only (:ro) or use destinationMode: 'separate_folder' if you don't
+#     want your source photos modified.
+#
+#   * Mount a volume onto /app/config-volume (see docker-compose.yml) to
+#     persist blur_studio_config.json across container restarts/redeploys.
+#
+#   * This image has no authentication of any kind — it's a straight port
+#     of the local dev server. Do not expose it to an untrusted network
+#     without putting your own auth/reverse-proxy in front of it. See
+#     SECURITY.md.
+# ---------------------------------------------------------------------------
+
+ENTRYPOINT ["node", "server.js"]

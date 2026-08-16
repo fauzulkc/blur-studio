@@ -68,7 +68,14 @@ export default function CanvasStudio({
     setSelectedExclusionIndex(null);
   }, [activeImage?.id]);
 
-  // Real-time Canvas Rendering for Selective Privacy Blur
+  // Real-time Canvas Rendering for Selective Privacy Blur. Mirrors
+  // blur_processor.py's approach exactly: targets are grouped by their
+  // EFFECTIVE (blurRadius, featherRadius) — the global default, unless a
+  // target opts out via useGlobalBlur: false — and each group is masked,
+  // feathered, blurred, and composited as its own pass. Without this
+  // grouping, the live preview would always show the global blur radius even
+  // for a region with its own custom override, mismatching what Apply
+  // Active/Batch actually produce.
   const renderBlurCanvas = useCallback((canvas) => {
     if (!activeImage || !imageRef.current || !canvas) return;
 
@@ -94,91 +101,137 @@ export default function CanvasStudio({
       return;
     }
 
-    // 1. Create transparent alpha mask canvas (alpha 0 = transparent sharp photo)
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = w;
-    maskCanvas.height = h;
-    const maskCtx = maskCanvas.getContext('2d');
-    maskCtx.clearRect(0, 0, w, h);
-
-    // 2. Draw blur regions in pure white with full opacity (alpha = 1.0)
-    maskCtx.fillStyle = '#ffffff';
-
-    // A. Draw Ellipse Targets
-    targets.forEach((t) => {
-      const cx = t.cx * w;
-      const cy = t.cy * h;
-      const rx = Math.max(2, t.rx * w);
-      const ry = Math.max(2, t.ry * h);
-
-      maskCtx.beginPath();
-      maskCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-      maskCtx.fill();
-    });
-
-    // B. Draw Selected Grid Cells
-    if (hasGridCells) {
-      const cellW = w / cols;
-      const cellH = h / rows;
-      selectedGridCells.forEach((cellKey) => {
-        const [c, r] = cellKey.split('_').map(Number);
-        maskCtx.fillRect(c * cellW, r * cellH, cellW + 0.5, cellH + 0.5);
-      });
-    }
-
-    // 3. Punch out VIP Exclusion Boxes (100% sharp VIP subject preservation)
+    // Punch-out mask for VIP exclusion boxes, built once and reused by every group.
+    let exclusionCanvas = null;
     if (exclusions.length > 0) {
-      maskCtx.globalCompositeOperation = 'destination-out';
+      exclusionCanvas = document.createElement('canvas');
+      exclusionCanvas.width = w;
+      exclusionCanvas.height = h;
+      const eCtx = exclusionCanvas.getContext('2d');
+      eCtx.fillStyle = '#ffffff';
       exclusions.forEach((box) => {
         const x1 = Math.min(box.x1, box.x2) * w;
         const y1 = Math.min(box.y1, box.y2) * h;
         const bxW = Math.abs(box.x2 - box.x1) * w;
         const bxH = Math.abs(box.y2 - box.y1) * h;
-        maskCtx.fillRect(x1, y1, bxW, bxH);
+        eCtx.fillRect(x1, y1, bxW, bxH);
       });
-      maskCtx.globalCompositeOperation = 'source-over';
     }
 
-    // 4. Smoothly feather the alpha mask edges
-    let finalMaskCanvas = maskCanvas;
-    if (featherRadius > 0) {
-      const featheredCanvas = document.createElement('canvas');
-      featheredCanvas.width = w;
-      featheredCanvas.height = h;
-      const fCtx = featheredCanvas.getContext('2d');
-      fCtx.filter = `blur(${featherRadius}px)`;
-      fCtx.drawImage(maskCanvas, 0, 0);
-      finalMaskCanvas = featheredCanvas;
-    }
+    const drawTargetsOnMask = (maskCtx, list) => {
+      maskCtx.fillStyle = '#ffffff';
+      list.forEach((t) => {
+        const cx = t.cx * w;
+        const cy = t.cy * h;
+        const rx = Math.max(2, t.rx * w);
+        const ry = Math.max(2, t.ry * h);
+        maskCtx.beginPath();
+        maskCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        maskCtx.fill();
+      });
+    };
+
+    const drawGridCellsOnMask = (maskCtx) => {
+      const cellW = w / cols;
+      const cellH = h / rows;
+      maskCtx.fillStyle = '#ffffff';
+      selectedGridCells.forEach((cellKey) => {
+        const [c, r] = cellKey.split('_').map(Number);
+        maskCtx.fillRect(c * cellW, r * cellH, cellW + 0.5, cellH + 0.5);
+      });
+    };
+
+    const punchExclusions = (maskCtx, maskCanvasEl) => {
+      if (!exclusionCanvas) return;
+      maskCtx.globalCompositeOperation = 'destination-out';
+      maskCtx.drawImage(exclusionCanvas, 0, 0);
+      maskCtx.globalCompositeOperation = 'source-over';
+    };
 
     if (viewMode === 'mask') {
-      // Show alpha mask preview
+      // Combined union of every group's regions — a structural preview, not a
+      // per-region-accurate one, so it uses the global feather radius only.
+      const combined = document.createElement('canvas');
+      combined.width = w;
+      combined.height = h;
+      const cCtx = combined.getContext('2d');
+      drawTargetsOnMask(cCtx, targets);
+      if (hasGridCells) drawGridCellsOnMask(cCtx);
+      punchExclusions(cCtx, combined);
+
+      let finalCombined = combined;
+      if (featherRadius > 0) {
+        const feathered = document.createElement('canvas');
+        feathered.width = w;
+        feathered.height = h;
+        const fCtx = feathered.getContext('2d');
+        fCtx.filter = `blur(${featherRadius}px)`;
+        fCtx.drawImage(combined, 0, 0);
+        finalCombined = feathered;
+      }
+
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, w, h);
-      ctx.drawImage(finalMaskCanvas, 0, 0);
+      ctx.drawImage(finalCombined, 0, 0);
       return;
     }
 
-    // 5. Create full-image Gaussian blurred source
-    const blurredCanvas = document.createElement('canvas');
-    blurredCanvas.width = w;
-    blurredCanvas.height = h;
-    const bCtx = blurredCanvas.getContext('2d');
-    bCtx.filter = `blur(${blurRadius}px)`;
-    bCtx.drawImage(img, 0, 0, w, h);
+    // Group ellipse targets by their effective (blurRadius, featherRadius).
+    // Grid-cell tiles have no per-tile override, so they always join the
+    // global-radius group.
+    const groups = new Map();
+    const groupFor = (blur, feather) => {
+      const key = `${blur}|${feather}`;
+      if (!groups.has(key)) groups.set(key, { blur, feather, targets: [], cells: false });
+      return groups.get(key);
+    };
+    targets.forEach((t) => {
+      const useOwn = t.useGlobalBlur === false;
+      const blur = useOwn ? (t.blurRadius ?? blurRadius) : blurRadius;
+      const feather = useOwn ? (t.featherRadius ?? featherRadius) : featherRadius;
+      groupFor(blur, feather).targets.push(t);
+    });
+    if (hasGridCells) {
+      groupFor(blurRadius, featherRadius).cells = true;
+    }
 
-    // 6. Clip blurred source strictly to the feathered alpha mask
-    const maskedBlurCanvas = document.createElement('canvas');
-    maskedBlurCanvas.width = w;
-    maskedBlurCanvas.height = h;
-    const mbCtx = maskedBlurCanvas.getContext('2d');
+    groups.forEach((group) => {
+      const maskCanvas = document.createElement('canvas');
+      maskCanvas.width = w;
+      maskCanvas.height = h;
+      const maskCtx = maskCanvas.getContext('2d');
+      drawTargetsOnMask(maskCtx, group.targets);
+      if (group.cells) drawGridCellsOnMask(maskCtx);
+      punchExclusions(maskCtx, maskCanvas);
 
-    mbCtx.drawImage(finalMaskCanvas, 0, 0);
-    mbCtx.globalCompositeOperation = 'source-in';
-    mbCtx.drawImage(blurredCanvas, 0, 0);
+      let finalMaskCanvas = maskCanvas;
+      if (group.feather > 0) {
+        const featheredCanvas = document.createElement('canvas');
+        featheredCanvas.width = w;
+        featheredCanvas.height = h;
+        const fCtx = featheredCanvas.getContext('2d');
+        fCtx.filter = `blur(${group.feather}px)`;
+        fCtx.drawImage(maskCanvas, 0, 0);
+        finalMaskCanvas = featheredCanvas;
+      }
 
-    // 7. Stamp the selective blur patches onto the sharp original image
-    ctx.drawImage(maskedBlurCanvas, 0, 0);
+      const blurredCanvas = document.createElement('canvas');
+      blurredCanvas.width = w;
+      blurredCanvas.height = h;
+      const bCtx = blurredCanvas.getContext('2d');
+      bCtx.filter = `blur(${group.blur}px)`;
+      bCtx.drawImage(img, 0, 0, w, h);
+
+      const maskedBlurCanvas = document.createElement('canvas');
+      maskedBlurCanvas.width = w;
+      maskedBlurCanvas.height = h;
+      const mbCtx = maskedBlurCanvas.getContext('2d');
+      mbCtx.drawImage(finalMaskCanvas, 0, 0);
+      mbCtx.globalCompositeOperation = 'source-in';
+      mbCtx.drawImage(blurredCanvas, 0, 0);
+
+      ctx.drawImage(maskedBlurCanvas, 0, 0);
+    });
   }, [activeImage, targets, exclusions, selectedGridCells, gridBlurEnabled, blurRadius, featherRadius, viewMode, cols, rows]);
 
   useEffect(() => {
@@ -190,13 +243,31 @@ export default function CanvasStudio({
     }
   }, [renderBlurCanvas, viewMode]);
 
-  // Coordinate conversion helper
+  // Coordinate conversion helper — clamps to [0,1] so an in-progress drag stays
+  // well-behaved even if the cursor briefly overshoots the image edge.
   const getImageCoords = (e) => {
     if (!imageRef.current) return null;
     const rect = imageRef.current.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
     return { x, y };
+  };
+
+  // Unlike getImageCoords, this does NOT clamp. The floating capsule is the
+  // only overlay that's actually nested inside this mousedown-handled
+  // container (Header and Dock are DOM siblings in App.jsx, not descendants),
+  // so a click on a capsule control (checkbox, button, number field) still
+  // bubbles up here — without this guard, getImageCoords' clamping silently
+  // turned that click into a valid-looking in-image coordinate pinned to
+  // whichever edge it was nearest, and handleMouseDown would create a real
+  // (if tiny) stray target at that clamped position. Gate the START of any
+  // new paint/create interaction on the pointer genuinely being over the
+  // image. (The capsule also stops propagation on its own onMouseDown as a
+  // second, independent layer of protection — see its root div below.)
+  const isPointerOnImage = (e) => {
+    if (!imageRef.current) return false;
+    const rect = imageRef.current.getBoundingClientRect();
+    return e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
   };
 
   // Mouse Down handler
@@ -208,6 +279,7 @@ export default function CanvasStudio({
     }
 
     if (e.button !== 0) return;
+    if (!isPointerOnImage(e)) return;
 
     const coords = getImageCoords(e);
     if (!coords) return;
@@ -794,7 +866,15 @@ export default function CanvasStudio({
       )}
 
       {/* Floating Canvas Contextual Capsule (Bottom Center) */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 glass-capsule rounded-panel shadow-2xl px-3 py-2.5 flex items-center gap-2.5 z-30 max-w-[92vw] overflow-x-auto">
+      {/* The capsule is an overlay that visually sits ON TOP of the image, so its
+          screen position is still geometrically within the image's own bounding
+          rect — a coordinate-bounds check alone can't tell a capsule click from an
+          image click. Stop propagation here so clicks on any capsule control
+          (checkbox, button, input) never reach the container's onMouseDown and get
+          misread as the start of a new paint/create interaction. */}
+      <div
+        onMouseDown={(e) => e.stopPropagation()}
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 glass-capsule rounded-panel shadow-2xl px-3 py-2.5 flex items-center gap-2.5 z-30 max-w-[92vw] overflow-x-auto">
         {/* TOOL CLUSTER */}
         <div className="control-group flex items-center gap-1 shrink-0 p-1">
           <button
@@ -865,6 +945,75 @@ export default function CanvasStudio({
                   />
                 </div>
               ))}
+
+              {/* Per-segment blur override — ticked (default) means this region uses the
+                  global Blur/Feather sliders; unticking reveals its own values instead. */}
+              <label
+                className="flex items-center gap-1 text-[10px] text-text-muted cursor-pointer select-none whitespace-nowrap"
+                title="Use the global Blur/Feather sliders for this region"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedTarget.useGlobalBlur !== false}
+                  onChange={(e) => {
+                    const useGlobal = e.target.checked;
+                    setTargets((prev) =>
+                      prev.map((t, i) => {
+                        if (i !== selectedTargetIndex) return t;
+                        if (useGlobal) return { ...t, useGlobalBlur: true };
+                        return {
+                          ...t,
+                          useGlobalBlur: false,
+                          blurRadius: t.blurRadius ?? blurRadius,
+                          featherRadius: t.featherRadius ?? featherRadius
+                        };
+                      })
+                    );
+                  }}
+                  style={{ accentColor: 'var(--color-accent)' }}
+                  className="w-3.5 h-3.5 cursor-pointer"
+                />
+                Global
+              </label>
+              {selectedTarget.useGlobalBlur === false && (
+                <>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] uppercase text-text-muted">Blur</span>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={selectedTarget.blurRadius ?? blurRadius}
+                      onChange={(e) => {
+                        const value = Math.max(0, Number(e.target.value));
+                        setTargets((prev) =>
+                          prev.map((t, i) => (i === selectedTargetIndex ? { ...t, blurRadius: value } : t))
+                        );
+                      }}
+                      title="Blur radius for this region only"
+                      className="glass-input px-1.5 py-1 text-xs w-12"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] uppercase text-text-muted">Feather</span>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={selectedTarget.featherRadius ?? featherRadius}
+                      onChange={(e) => {
+                        const value = Math.max(0, Number(e.target.value));
+                        setTargets((prev) =>
+                          prev.map((t, i) => (i === selectedTargetIndex ? { ...t, featherRadius: value } : t))
+                        );
+                      }}
+                      title="Feather radius for this region only"
+                      className="glass-input px-1.5 py-1 text-xs w-12"
+                    />
+                  </div>
+                </>
+              )}
+
               <button
                 onClick={handleAddRegion}
                 className="glass-btn p-1.5"
@@ -914,6 +1063,7 @@ export default function CanvasStudio({
               <button
                 onClick={onConvertGridToTargets}
                 disabled={selectedGridCells.size === 0}
+                title="Turn every painted tile into its own ellipse blur region"
                 className="glass-btn pri px-2.5 py-1 text-xs whitespace-nowrap"
               >
                 Convert to regions
@@ -921,6 +1071,7 @@ export default function CanvasStudio({
               <button
                 onClick={() => setSelectedGridCells(new Set())}
                 disabled={selectedGridCells.size === 0}
+                title="Unpaint all grid tiles without deleting any regions"
                 className="glass-btn px-2.5 py-1 text-xs whitespace-nowrap"
               >
                 Clear tiles
@@ -1090,14 +1241,15 @@ export default function CanvasStudio({
           {/* View Mode Segmented Control */}
           <div className="ios-segment">
             {[
-              { key: 'blur-applied', label: 'Blurred' },
-              { key: 'original', label: 'Original' },
-              { key: 'side-by-side', label: 'Split' },
-              { key: 'mask', label: 'Mask' }
+              { key: 'blur-applied', label: 'Blurred', title: 'Preview with all blur regions applied' },
+              { key: 'original', label: 'Original', title: 'Show the untouched source photo' },
+              { key: 'side-by-side', label: 'Split', title: 'Show original and blurred side by side' },
+              { key: 'mask', label: 'Mask', title: 'Show the raw blur mask (white = blurred area)' }
             ].map((opt) => (
               <button
                 key={opt.key}
                 onClick={() => setViewMode(opt.key)}
+                title={opt.title}
                 className={`ios-segment-btn text-[11px] ${viewMode === opt.key ? 'on' : ''}`}
               >
                 {opt.label}
@@ -1106,19 +1258,24 @@ export default function CanvasStudio({
           </div>
         </div>
 
-        {hoveredCell && (
-          <>
-            <div className="w-px h-6 bg-border-default" />
-            <div className="text-[11px] mono-font text-text-muted flex items-center gap-2 whitespace-nowrap shrink-0">
-              <span className="text-accent-strong font-semibold">
-                [{hoveredCell.col}, {hoveredCell.row}]
-              </span>
-              <span>
-                X: {(hoveredCell.x * 100).toFixed(1)}% Y: {(hoveredCell.y * 100).toFixed(1)}%
-              </span>
-            </div>
-          </>
-        )}
+        {/* Hover-coordinate readout — always mounted with a fixed min-width and
+            toggled via opacity (not conditional rendering) so the capsule's own
+            width never shifts as the mouse moves or coordinates change digits.
+            An unstable capsule width was racing clicks on adjacent buttons
+            (e.g. Delete Region) against the capsule's backdrop-filter reflow. */}
+        <div className="w-px h-6 bg-border-default shrink-0" />
+        <div
+          className={`text-[11px] mono-font text-text-muted flex items-center gap-2 whitespace-nowrap shrink-0 min-w-[180px] transition-opacity ${
+            hoveredCell ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <span className="text-accent-strong font-semibold">
+            [{hoveredCell ? hoveredCell.col : 0}, {hoveredCell ? hoveredCell.row : 0}]
+          </span>
+          <span>
+            X: {hoveredCell ? (hoveredCell.x * 100).toFixed(1) : '0.0'}% Y: {hoveredCell ? (hoveredCell.y * 100).toFixed(1) : '0.0'}%
+          </span>
+        </div>
       </div>
     </div>
   );

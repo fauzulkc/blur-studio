@@ -23,5 +23,9 @@ sample-photos-blurred/
 Thumbs.db
 *.log
 
+# Python bytecode cache from running blur_processor.py directly
+__pycache__/
+*.pyc
+
 # E2E test failure screenshots (regenerated per run)
 tests/e2e/screenshots/

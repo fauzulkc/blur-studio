@@ -16,6 +16,13 @@ const PORT = process.env.PORT || 3333;
 app.use(cors());
 app.use(express.json({ limit: '100mb' }));
 
+// Health check — for container orchestration (Docker HEALTHCHECK, Kubernetes
+// probes, hosting platforms) to confirm the process is actually serving
+// requests, not just running.
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
 // 1. Quick presets endpoint
 app.get('/api/presets', async (req, res) => {
   try {

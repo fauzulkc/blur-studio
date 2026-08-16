@@ -59,12 +59,14 @@ export default function Dock({
         <div className="ios-segment">
           <button
             onClick={() => setActiveDockTab('regions')}
+            title="Show ellipse targets and VIP areas for the active photo"
             className={`ios-segment-btn text-xs font-medium ${activeDockTab === 'regions' ? 'on' : ''}`}
           >
             Regions {targets.length}
           </button>
           <button
             onClick={() => setActiveDockTab('photos')}
+            title="Browse and search all photos in the folder"
             className={`ios-segment-btn text-xs font-medium ${activeDockTab === 'photos' ? 'on' : ''}`}
           >
             Photos {images.length}
@@ -87,18 +89,21 @@ export default function Dock({
             <div className="ios-segment">
               <button
                 onClick={() => setFilterMode('all')}
+                title="Show every photo in the folder"
                 className={`ios-segment-btn text-[10px] font-medium ${filterMode === 'all' ? 'on' : ''}`}
               >
                 All
               </button>
               <button
                 onClick={() => setFilterMode('has-targets')}
+                title="Show only photos with at least one saved region"
                 className={`ios-segment-btn text-[10px] font-medium ${filterMode === 'has-targets' ? 'on' : ''}`}
               >
                 Configured
               </button>
               <button
                 onClick={() => setFilterMode('no-targets')}
+                title="Show only photos with no regions saved yet"
                 className={`ios-segment-btn text-[10px] font-medium ${filterMode === 'no-targets' ? 'on' : ''}`}
               >
                 Pending
@@ -163,6 +168,8 @@ export default function Dock({
                   >
                     <button
                       onClick={(e) => handleDeleteExclusion(e, idx)}
+                      title="Remove this VIP area"
+                      aria-label="Remove this VIP area"
                       className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-state-danger text-white text-[9px] flex items-center justify-center leading-none z-10"
                     >
                       <X className="w-2.5 h-2.5" />

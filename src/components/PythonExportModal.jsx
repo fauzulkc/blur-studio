@@ -46,6 +46,7 @@ export default function PythonExportModal({ isOpen, onClose }) {
 
           <button
             onClick={onClose}
+            title="Close"
             aria-label="Close"
             className="p-1.5 text-text-secondary hover:text-text-primary rounded-control hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
           >
@@ -72,6 +73,7 @@ export default function PythonExportModal({ isOpen, onClose }) {
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopy}
+              title="Copy the generated Python code to your clipboard"
               className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-strong text-surface-canvas font-bold rounded-panel text-xs transition-all shadow-lg shadow-accent/20 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/60"
             >
               {copied ? <Check className="w-4 h-4 text-surface-canvas" /> : <Copy className="w-4 h-4" />}
