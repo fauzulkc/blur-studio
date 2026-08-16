@@ -1,4 +1,4 @@
-# AGENTS.md — Image Blur Studio
+# AGENTS.md — Blur Studio
 
 This file gives any AI coding agent (Claude Code, Cursor, OpenAI Codex CLI,
 Gemini CLI/Antigravity, Amp, or a plain shell-driven agent) everything needed
@@ -6,12 +6,12 @@ to *operate* this tool correctly — not just read its code. It stands on its
 own: you do not need `.claude/skills/blur-studio/SKILL.md` (a Claude-specific
 packaged skill covering the same ground) to use anything described here.
 
-Repo: https://github.com/fauzulkc/image-blur-studio · License: MIT · Author:
+Repo: https://github.com/fauzulkc/blur-studio · License: MIT · Author:
 Fauzul Chowdhury.
 
 ## What this repo is
 
-Image Blur Studio is a coordinate-based selective image blurring tool: give
+Blur Studio is a coordinate-based selective image blurring tool: give
 it normalized 0-1 regions of an image (ellipses or rectangles) and it applies
 Gaussian blur with a feathered edge inside those regions, optionally
 protecting other regions ("exclusions") so they stay 100% sharp even if a

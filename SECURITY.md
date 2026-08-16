@@ -4,9 +4,9 @@
 
 This project doesn't have a dedicated security email. To report a
 vulnerability, please use **[GitHub Security
-Advisories](https://github.com/fauzulkc/image-blur-studio/security/advisories/new)**
+Advisories](https://github.com/fauzulkc/blur-studio/security/advisories/new)**
 to open a private report on the
-[`fauzulkc/image-blur-studio`](https://github.com/fauzulkc/image-blur-studio)
+[`fauzulkc/blur-studio`](https://github.com/fauzulkc/blur-studio)
 repository. This lets you share details privately with the maintainer
 before anything is disclosed publicly.
 
@@ -27,7 +27,7 @@ promptly as possible.
 
 ## Security model — what's expected, what isn't
 
-Image Blur Studio is a **local, single-user, desktop-style tool**, not a
+Blur Studio is a **local, single-user, desktop-style tool**, not a
 multi-tenant service. That shapes what counts as "working as intended"
 versus an actual vulnerability:
 

@@ -1,15 +1,15 @@
 # syntax=docker/dockerfile:1
 #
-# Image Blur Studio — multi-target Dockerfile
+# Blur Studio — multi-target Dockerfile
 #
 # Two independently buildable images share this one file:
 #
-#   docker build --target mcp -t image-blur-studio-mcp .
+#   docker build --target mcp -t blur-studio-mcp .
 #     → runs ONLY mcp-server.js (StdioServerTransport). Not a web server — an
 #       MCP client (Claude Desktop, Claude Code, etc.) spawns this process and
 #       talks to it over stdin/stdout. No port, no React UI.
 #
-#   docker build --target web -t image-blur-studio-web .
+#   docker build --target web -t blur-studio-web .
 #     → runs server.js: the Express API AND the built React UI on ONE HTTP
 #       port (server.js already serves dist/ as static files when it exists —
 #       see the comment near its bottom). This is the image to deploy for
@@ -136,7 +136,7 @@ RUN mkdir -p config-volume \
 # IMPORTANT — volumes (nothing outside the image is visible without these):
 #
 #   * Real photo folders must be bind-mounted in at `docker run` time, e.g.:
-#       docker run -it --rm -v ~/Photos:/photos image-blur-studio-mcp
+#       docker run -it --rm -v ~/Photos:/photos blur-studio-mcp
 #     then pass paths under /photos/... as inputPath/folderPath to the MCP
 #     tools. destinationMode: 'replace' overwrites files IN PLACE inside
 #     whatever folder you mount (backed up to '<file>.bak' first, unless
@@ -157,7 +157,7 @@ ENTRYPOINT ["node", "mcp-server.js"]
 
 # ---------------------------------------------------------------------------
 # Stage: web — full app: Express API + built React UI on one HTTP port.
-# This is the image to deploy for actually hosting Image Blur Studio.
+# This is the image to deploy for actually hosting Blur Studio.
 # ---------------------------------------------------------------------------
 FROM runtime-base AS web
 
@@ -186,7 +186,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # IMPORTANT — same volume caveats as the mcp stage apply here too:
 #
 #   * Mount real photo folders in at `docker run` time, e.g.:
-#       docker run -d -p 3333:3333 -v ~/Photos:/photos image-blur-studio-web
+#       docker run -d -p 3333:3333 -v ~/Photos:/photos blur-studio-web
 #     then point the Web UI's source-folder field at /photos/... — nothing
 #     outside the image is visible otherwise. destinationMode: 'replace'
 #     overwrites files IN PLACE inside whatever folder you mount (backed up

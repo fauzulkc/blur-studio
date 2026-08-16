@@ -1,4 +1,4 @@
-# Contributing to Image Blur Studio
+# Contributing to Blur Studio
 
 Thanks for looking at contributing. This project is a coordinate-based
 selective image blurring tool — a web UI, a CLI, and an MCP server, all

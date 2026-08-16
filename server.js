@@ -149,7 +149,7 @@ if (fs.existsSync(distDir)) {
 
 app.listen(PORT, () => {
   console.log(`\n======================================================`);
-  console.log(`  🎨 Image Blur Studio Backend Running on Port ${PORT}`);
+  console.log(`  🎨 Blur Studio Backend Running on Port ${PORT}`);
   console.log(`  🔗 API: http://localhost:${PORT}/api/scan-folder`);
   console.log(`======================================================\n`);
 });

@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report something broken in Image Blur Studio
+description: Report something broken in Blur Studio
 title: "[Bug]: "
 labels: ["bug"]
 body:
@@ -8,7 +8,7 @@ body:
       value: |
         Thanks for taking the time to file a bug report.
 
-        **Privacy reminder:** Image Blur Studio is a privacy tool. Before
+        **Privacy reminder:** Blur Studio is a privacy tool. Before
         submitting, please double-check that any screenshots, logs, or file
         paths you attach do **not** contain real/private photos, real
         filenames, or real folder paths from your machine. Use the bundled

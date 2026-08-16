@@ -1,6 +1,6 @@
 # Blur Studio — Worked Examples
 
-These three examples assume `npm install` has already been run from the `image-blur-studio` repo root, and that `python3 -c "import PIL, numpy"` succeeds (see the Setup section of `SKILL.md`). Coordinates below are illustrative — always derive real coordinates by looking at the actual image, not by reusing these numbers.
+These three examples assume `npm install` has already been run from the `blur-studio` repo root, and that `python3 -c "import PIL, numpy"` succeeds (see the Setup section of `SKILL.md`). Coordinates below are illustrative — always derive real coordinates by looking at the actual image, not by reusing these numbers.
 
 ## Example A: Single-image ellipse face-blur via the `apply_blur` MCP tool
 

@@ -1,12 +1,12 @@
 name: Feature Request
-description: Suggest an idea or improvement for Image Blur Studio
+description: Suggest an idea or improvement for Blur Studio
 title: "[Feature]: "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting an improvement to Image Blur Studio.
+        Thanks for suggesting an improvement to Blur Studio.
 
   - type: textarea
     id: problem

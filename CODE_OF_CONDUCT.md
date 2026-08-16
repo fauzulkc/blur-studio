@@ -61,7 +61,7 @@ an appointed representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported by [opening an issue on the
-`fauzulkc/image-blur-studio` GitHub repository](https://github.com/fauzulkc/image-blur-studio/issues).
+`fauzulkc/blur-studio` GitHub repository](https://github.com/fauzulkc/blur-studio/issues).
 This is the project's only contact channel — if the report involves
 sensitive details you'd rather not put in a public issue, note that
 constraint in the issue itself and a maintainer will follow up privately.

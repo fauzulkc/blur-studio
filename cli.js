@@ -74,7 +74,7 @@ const program = new Command();
 
 program
   .name('blur-studio')
-  .description('CLI for Image Blur Studio — wraps blurService.js for humans and scripts')
+  .description('CLI for Blur Studio — wraps blurService.js for humans and scripts')
   .version('1.0.0');
 
 program

@@ -1,5 +1,5 @@
 {
-  "name": "image-blur-studio",
+  "name": "blur-studio",
   "version": "1.0.0",
   "description": "Coordinate-based selective photo blurring — precisely blur faces, plates, screens, or any region while keeping VIP subjects sharp. Ships with a web UI, a CLI, and an MCP server so agents can drive it directly.",
   "keywords": [
@@ -14,13 +14,13 @@
     "react",
     "vite"
   ],
-  "homepage": "https://github.com/fauzulkc/image-blur-studio#readme",
+  "homepage": "https://github.com/fauzulkc/blur-studio#readme",
   "bugs": {
-    "url": "https://github.com/fauzulkc/image-blur-studio/issues"
+    "url": "https://github.com/fauzulkc/blur-studio/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fauzulkc/image-blur-studio.git"
+    "url": "git+https://github.com/fauzulkc/blur-studio.git"
   },
   "license": "MIT",
   "author": "Fauzul Chowdhury",

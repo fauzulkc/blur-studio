@@ -4,7 +4,7 @@ description: This skill should be used when the user or an agent asks to "blur t
 metadata:
   requires:
     bins: ["node", "python3"]
-    install: "npm install (from the image-blur-studio repo root); pip install -r requirements.txt for the Python side (Pillow, numpy)"
+    install: "npm install (from the blur-studio repo root); pip install -r requirements.txt for the Python side (Pillow, numpy)"
 ---
 
 # Blur Studio
@@ -82,7 +82,7 @@ Every subcommand prints `JSON.stringify(result, null, 2)` to stdout and exits 0 
 
 ## Setup / Prerequisites
 
-Run `npm install` from the `image-blur-studio` repo root before using either path — this pulls in `commander`, `@modelcontextprotocol/sdk`, `zod`, and the other Node dependencies both `cli.js` and `mcp-server.js` need.
+Run `npm install` from the `blur-studio` repo root before using either path — this pulls in `commander`, `@modelcontextprotocol/sdk`, `zod`, and the other Node dependencies both `cli.js` and `mcp-server.js` need.
 
 The pixel-processing step is Python, not Node: `blurService.js` shells out to `blur_processor.py`, which imports `PIL` (Pillow) and `numpy`. Run `pip install -r requirements.txt` from the repo root to install both. Confirm `python3 -c "import PIL, numpy"` succeeds in whatever Python environment `python3` resolves to before calling `apply_blur`/`apply` — if it fails despite the install, `python3` is probably resolving to a different interpreter than the one `pip` installed into.
 

@@ -1,4 +1,4 @@
-# Image Blur Studio — two independent services built from the same
+# Blur Studio — two independent services built from the same
 # multi-target Dockerfile (see its header comment for the full picture).
 #
 # Web app (API + built React UI, one HTTP port):
@@ -26,7 +26,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: web
-    container_name: image-blur-studio-web
+    container_name: blur-studio-web
     restart: unless-stopped
     ports:
       - '3333:3333'
@@ -58,7 +58,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: mcp
-    container_name: image-blur-studio-mcp
+    container_name: blur-studio-mcp
     stdin_open: true # keep STDIN open (-i) — required for a stdio MCP server
     tty: true # allocate a TTY (-t) so the container stays up/attachable
 

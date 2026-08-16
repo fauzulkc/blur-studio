@@ -236,7 +236,7 @@ export async function applyBlur({
 // 6. Export Python code snippet
 export async function exportPythonSnippet() {
   const config = getAppConfig();
-  let pyCode = `# Auto-generated from Image Blur Studio\n\n`;
+  let pyCode = `# Auto-generated from Blur Studio\n\n`;
   pyCode += `EXCLUSION_BOXES = {\n`;
   for (const [fname, boxes] of Object.entries(config.exclusions || {})) {
     if (boxes && boxes.length > 0) {

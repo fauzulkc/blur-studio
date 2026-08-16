@@ -1,16 +1,16 @@
-# Image Blur Studio
+# Blur Studio
 
 Coordinate-based selective photo blurring — precisely blur faces, plates, screens, or any region while keeping VIP subjects sharp, from a glass-UI web app, a CLI, or an MCP server that AI agents can drive directly.
 
-[![CI](https://github.com/fauzulkc/image-blur-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/fauzulkc/image-blur-studio/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/fauzulkc/image-blur-studio/blob/main/LICENSE)
+[![CI](https://github.com/fauzulkc/blur-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/fauzulkc/blur-studio/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/fauzulkc/blur-studio/blob/main/LICENSE)
 [![Node.js >=20](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
 
-![Image Blur Studio](docs/screenshot.png)
+![Blur Studio](docs/screenshot.png)
 
 ## What it is
 
-Image Blur Studio applies Gaussian blur with soft feathered edges to exact regions of an image — ellipses, rectangles, or hand-painted grid tiles — and can carve out rectangular "VIP" exclusion boxes that stay 100% sharp even when they overlap a blurred region. The same processing engine (`blurService.js` → `blur_processor.py`) is exposed three ways:
+Blur Studio applies Gaussian blur with soft feathered edges to exact regions of an image — ellipses, rectangles, or hand-painted grid tiles — and can carve out rectangular "VIP" exclusion boxes that stay 100% sharp even when they overlap a blurred region. The same processing engine (`blurService.js` → `blur_processor.py`) is exposed three ways:
 
 - **Web UI** — a glass-materials dark studio for humans to click, drag, and paint regions on real photos.
 - **CLI** (`blur-studio`) — scriptable access to every operation for shell pipelines and automation.
@@ -36,8 +36,8 @@ Image Blur Studio applies Gaussian blur with soft feathered edges to exact regio
 Requires Node.js >=20 and Python 3.10+ with [Pillow](https://pypi.org/project/Pillow/).
 
 ```bash
-git clone https://github.com/fauzulkc/image-blur-studio.git
-cd image-blur-studio
+git clone https://github.com/fauzulkc/blur-studio.git
+cd blur-studio
 npm install
 pip install -r requirements.txt
 
@@ -55,7 +55,7 @@ Open **http://localhost:5173**. The app loads the bundled `sample-photos/` folde
 
 ## How it works
 
-Image Blur Studio does **not** do automatic face, license-plate, or subject detection. It has no model for "what a face looks like." Every blur region is a set of exact normalized `0–1` coordinates that the caller supplies:
+Blur Studio does **not** do automatic face, license-plate, or subject detection. It has no model for "what a face looks like." Every blur region is a set of exact normalized `0–1` coordinates that the caller supplies:
 
 - an **ellipse** — `{ cx, cy, rx, ry }`, a center point + radii
 - a **rectangle / grid tile** — `{ x1, y1, x2, y2 }`, top-left and bottom-right corners
@@ -151,9 +151,9 @@ Every MCP client wants the same basic shape — a `command` to spawn plus its `a
 **Claude Code** — if you clone *this repo* and open Claude Code inside it, the checked-in `.mcp.json` is auto-detected and Claude Code will prompt to enable it — nothing else to do. To make it available from *any* directory instead:
 
 ```bash
-claude mcp add --scope user blur-studio -- node /absolute/path/to/image-blur-studio/mcp-server.js
+claude mcp add --scope user blur-studio -- node /absolute/path/to/blur-studio/mcp-server.js
 # or, via Docker, no local Node/Python required:
-claude mcp add --scope user blur-studio -- docker run -i --rm -v ~/Photos:/photos image-blur-studio-mcp
+claude mcp add --scope user blur-studio -- docker run -i --rm -v ~/Photos:/photos blur-studio-mcp
 ```
 
 **Claude Desktop** — add an entry to its config file (create the file if it doesn't exist yet):
@@ -169,7 +169,7 @@ claude mcp add --scope user blur-studio -- docker run -i --rm -v ~/Photos:/photo
   "mcpServers": {
     "blur-studio": {
       "command": "node",
-      "args": ["/absolute/path/to/image-blur-studio/mcp-server.js"]
+      "args": ["/absolute/path/to/blur-studio/mcp-server.js"]
     }
   }
 }
@@ -195,16 +195,16 @@ One multi-target `Dockerfile` builds two independent images, sharing a common No
 
 | Target | Build | What it runs | Port |
 |---|---|---|---|
-| `web` | `docker build --target web -t image-blur-studio-web .` | `server.js` — the Express API **and** the built React UI, on one HTTP port. **This is the image to deploy for hosting the app.** | `3333` |
-| `mcp` | `docker build --target mcp -t image-blur-studio-mcp .` | `mcp-server.js` over stdio — no port, no UI, spawned directly by an MCP client. | — |
+| `web` | `docker build --target web -t blur-studio-web .` | `server.js` — the Express API **and** the built React UI, on one HTTP port. **This is the image to deploy for hosting the app.** | `3333` |
+| `mcp` | `docker build --target mcp -t blur-studio-mcp .` | `mcp-server.js` over stdio — no port, no UI, spawned directly by an MCP client. | — |
 
 `docker build .` with no `--target` builds `web`.
 
 **Deploy the full app:**
 
 ```bash
-docker build --target web -t image-blur-studio-web .
-docker run -d -p 3333:3333 -v ~/Photos:/photos image-blur-studio-web
+docker build --target web -t blur-studio-web .
+docker run -d -p 3333:3333 -v ~/Photos:/photos blur-studio-web
 ```
 
 Open **http://localhost:3333** — the API and UI are served from the same container. A `HEALTHCHECK` hits `/health` every 30s so orchestrators (Docker, Kubernetes, most hosting platforms) can tell it's actually serving requests, not just running.
@@ -212,8 +212,8 @@ Open **http://localhost:3333** — the API and UI are served from the same conta
 **Run the MCP server in a container:**
 
 ```bash
-docker build --target mcp -t image-blur-studio-mcp .
-docker run -i --rm -v ~/Photos:/photos image-blur-studio-mcp
+docker build --target mcp -t blur-studio-mcp .
+docker run -i --rm -v ~/Photos:/photos blur-studio-mcp
 ```
 
 **Only the folders you explicitly mount (`-v host:container`) are visible inside either container.** The rest of your filesystem is not reachable — pass whichever photo directories you need as bind mounts, and reference the container-side path (e.g. `/photos`) in the UI's source-folder field or when calling `scan_folder`/`apply_blur`.
