@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+@theme {
+  /* Surface depth scale — darkest (page) to lightest (elevated) — true neutral, no blue undertone */
+  --color-surface-canvas: #09090b;
+  --color-surface-recessed: #17171a;
+  --color-surface-raised: #232326;
+
+  /* Borders */
+  --color-border-subtle: #27272a;
+  --color-border-default: #3f3f46;
+
+  /* Text */
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #d4d4d8;
+  --color-text-muted: #71717a;
+
+  /* Accent — the one signature interactive color */
+  --color-accent: #f59e0b;
+  --color-accent-strong: #fbbf24;
+
+  /* State signals — reserved for real state, not decoration */
+  --color-state-success: #10b981;
+  --color-state-danger: #ef4444;
+  --color-state-info: #0ea5e9;
+
+  /* Fonts */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Radius scale */
+  --radius-control: 0.5rem;
+  --radius-panel: 0.75rem;
+  --radius-modal: 1rem;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-surface-canvas);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    overflow: hidden;
+  }
+
+  /* Custom scrollbars */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--color-surface-canvas); }
+  ::-webkit-scrollbar-thumb { background: var(--color-border-subtle); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-border-default); }
+}
+
+.mono-font { font-family: var(--font-mono); }
+
+/* Glassmorphism */
+.glass-panel { background: color-mix(in srgb, var(--color-surface-recessed) 82%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.06); box-shadow: var(--glass-hl); }
+.glass-panel-subtle { background: color-mix(in srgb, var(--color-surface-raised) 50%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.06); box-shadow: var(--glass-hl); }
+
+/* Canvas viewport background — solid, no checker pattern */
+.canvas-bg-checker {
+  background-color: var(--color-surface-canvas);
+}
+
+/* Grid cell active animations */
+@keyframes cellPulse { 0% { transform: scale(0.96); opacity: 0.7; } 50% { transform: scale(1.02); opacity: 0.9; } 100% { transform: scale(1); opacity: 0.85; } }
+.cell-selected { animation: cellPulse 0.15s ease-out; }
+
+/* ============================================================
+   Materials — floating glass surfaces
+   Apple-style vibrancy/depth material, using the existing
+   --color-accent (amber) as the only identity hue.
+   ============================================================ */
+
+:root {
+  --glass-hl: inset 0 1px 0 rgba(255,255,255,.14);
+}
+
+.glass-capsule {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface-raised) 62%, transparent), color-mix(in srgb, var(--color-surface-canvas) 74%, transparent));
+  backdrop-filter: blur(56px) saturate(200%);
+  -webkit-backdrop-filter: blur(56px) saturate(200%);
+  border: none;
+  box-shadow: 0 26px 70px rgba(0,0,0,.55), 0 2px 10px rgba(0,0,0,.35), 0 0 0 .5px rgba(255,255,255,.09), var(--glass-hl);
+}
+
+/* Recessed "tray" wrapper — groups related controls inside the capsule into a
+   visually distinct module, so the toolbar reads as clusters instead of one flat row. */
+.control-group {
+  background: rgba(0,0,0,.22);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.3), inset 0 0 0 .5px rgba(255,255,255,.05);
+}
+
+.ios-segment {
+  border: none;
+  background: rgba(0,0,0,.28);
+  border-radius: var(--radius-control);
+  padding: 2px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.4);
+  display: flex;
+  gap: 0;
+}
+.ios-segment-btn {
+  border-radius: calc(var(--radius-control) - 2px);
+  padding: 6px 12px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+}
+.ios-segment-btn.on {
+  background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.11));
+  color: var(--color-text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.16);
+}
+.ios-segment-btn.danger.on {
+  background: color-mix(in srgb, var(--color-state-danger) 82%, transparent);
+  color: white;
+}
+
+.tool-pill {
+  border-radius: 11px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  transition: background .15s ease;
+}
+.tool-pill:hover { background: rgba(255,255,255,.07); }
+.tool-pill.on {
+  background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.09));
+  color: var(--color-text-primary);
+  box-shadow: 0 1px 4px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.15);
+}
+.tool-pill.on svg { color: var(--color-accent-strong); }
+
+.glass-input {
+  border: none;
+  background: rgba(0,0,0,.26);
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.35);
+  color: var(--color-text-primary);
+}
+.glass-input:focus {
+  background: rgba(0,0,0,.34);
+  outline: none;
+}
+
+.glass-btn {
+  border: none;
+  background: rgba(255,255,255,.09);
+  border-radius: var(--radius-control);
+  box-shadow: var(--glass-hl);
+  color: var(--color-text-primary);
+  transition: background .15s ease;
+}
+.glass-btn:hover { background: rgba(255,255,255,.15); }
+.glass-btn.pri {
+  background: linear-gradient(180deg, var(--color-accent-strong), var(--color-accent));
+  color: var(--color-surface-canvas);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--color-accent) 40%, transparent), inset 0 1px 0 rgba(255,255,255,.32);
+  font-weight: 700;
+}
+.glass-btn.pri:hover { filter: brightness(1.06); }
+.glass-btn:disabled {
+  background: rgba(255,255,255,.04);
+  box-shadow: none;
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+/* iOS-style range slider */
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 16px;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 3px;
+  background: rgba(255,255,255,.14);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.35);
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  margin-top: -5.5px;
+  border-radius: 50%;
+  background: linear-gradient(180deg,#fff,#e8e8ec);
+  box-shadow: 0 1px 4px rgba(0,0,0,.5), 0 0 0 .5px rgba(0,0,0,.2);
+  cursor: pointer;
+}
+input[type=range]::-moz-range-track {
+  height: 4px;
+  border-radius: 3px;
+  background: rgba(255,255,255,.14);
+}
+input[type=range]::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.5);
+  cursor: pointer;
+}
+
+.focus-glow {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: inherit;
+}

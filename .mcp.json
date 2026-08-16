@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "blur-studio": {
+      "command": "node",
+      "args": ["mcp-server.js"]
+    }
+  }
+}

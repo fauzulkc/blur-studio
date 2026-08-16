@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Image backups created by destinationMode: 'replace'
+*.bak
+
+# Runtime session state (last-used folders, targets/exclusions from actual
+# usage) — never commit real usage data. A clean sample-based version ships
+# in the repo; the app freely overwrites this file as you use it.
+blur_studio_config.json
+
+# Output of running Apply/Batch against the bundled sample photos
+sample-photos-blurred/
+
+# Machine-local Claude Code settings (project skills + .mcp.json ARE tracked)
+.claude/settings.local.json
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log
+
+# E2E test failure screenshots (regenerated per run)
+tests/e2e/screenshots/

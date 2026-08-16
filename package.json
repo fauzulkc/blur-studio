@@ -1,0 +1,33 @@
+{
+  "name": "image-blur-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "blur-studio": "./cli.js"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "server": "node server.js",
+    "start": "node server.js",
+    "test:e2e": "node tests/e2e/functions.spec.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "commander": "^15.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "lucide-react": "^0.471.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.3.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "playwright": "^1.62.1",
+    "vite": "^6.0.7"
+  }
+}
